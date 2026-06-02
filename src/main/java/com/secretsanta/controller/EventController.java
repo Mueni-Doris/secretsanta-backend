@@ -54,24 +54,41 @@ public class EventController {
     // 3. Generate JWT for organizer
     // 4. Send confirmation email
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> create(@RequestBody Map<String, String> body) {
+        String name = trimToNull(body.get("name"));
+        String budget = trimToNull(body.get("budget"));
+        String organizerEmail = normalizeEmail(body.get("organizerEmail"));
+        String organizerPassword = body.get("organizerPassword");
+
+        if (name == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Event name is required"));
+        }
+        if (budget == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Budget is required"));
+        }
+        if (organizerEmail == null || !organizerEmail.contains("@")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Valid organizer email is required"));
+        }
+        if (organizerPassword == null || organizerPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Organizer password must be at least 6 characters"));
+        }
+
         // Build event
         Event event = new Event();
-        event.setName(body.get("name"));
+        event.setName(name);
         event.setDrawDate(body.get("drawDate"));
-        event.setBudget(body.get("budget"));
+        event.setBudget(budget);
         event.setCurrency(body.getOrDefault("currency", "KES"));
         event.setRules(body.get("rules"));
-        String organizerEmail = body.get("organizerEmail") == null
-                ? null
-                : body.get("organizerEmail").trim().toLowerCase();
         event.setOrganizerEmail(organizerEmail);
         event.setStatus("active");
         Event saved = eventRepo.save(event);
 
         // Auto-add organizer as first participant
-        String organizerName     = body.getOrDefault("organizerName", organizerEmail.split("@")[0]);
-        String organizerPassword = body.get("organizerPassword");
+        String organizerName = trimToNull(body.get("organizerName"));
+        if (organizerName == null) {
+            organizerName = organizerEmail.split("@")[0];
+        }
 
         Participant organizer = new Participant();
         organizer.setName(organizerName);
@@ -82,14 +99,12 @@ public class EventController {
         organizer.setHasSpun(false);
         organizer.setEventId(saved.getId());
 
-        if (organizerPassword != null && organizerPassword.length() >= 6) {
-            organizer.setPasswordHash(
-                    org.springframework.security.crypto.bcrypt.BCrypt.hashpw(
-                            organizerPassword,
-                            org.springframework.security.crypto.bcrypt.BCrypt.gensalt()
-                    )
-            );
-        }
+        organizer.setPasswordHash(
+                org.springframework.security.crypto.bcrypt.BCrypt.hashpw(
+                        organizerPassword,
+                        org.springframework.security.crypto.bcrypt.BCrypt.gensalt()
+                )
+        );
 
         Participant savedOrganizer = participantRepo.save(organizer);
 
@@ -125,6 +140,18 @@ public class EventController {
         response.put("joinLink",    "Use the invite screen to send tokenized participant invite links.");
 
         return ResponseEntity.ok(response);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String normalizeEmail(String email) {
+        String trimmed = trimToNull(email);
+        return trimmed == null ? null : trimmed.toLowerCase();
     }
 
     @GetMapping

@@ -39,6 +39,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // Public endpoints: creating an event, login, and accepting an invite.
         if ((path.equals("/api/events") && request.getMethod().equals("POST")) ||
+                path.equals("/api/health") ||
                 path.equals("/api/auth/login") ||
                 path.equals("/api/auth/accept-invite") ||
                 path.equals("/api/auth/forgot-password") ||
