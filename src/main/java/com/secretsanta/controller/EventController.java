@@ -9,6 +9,8 @@ import com.secretsanta.service.EmailService;
 import com.secretsanta.service.JwtService;
 import com.secretsanta.service.RequestAuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +21,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/events")
 public class EventController {
+
+    private static final Logger log = LoggerFactory.getLogger(EventController.class);
 
     private final EventRepository eventRepo;
     private final ParticipantRepository participantRepo;
@@ -108,7 +112,7 @@ public class EventController {
                     joinLink
             );
         } catch (Exception e) {
-            System.err.println("Could not send confirmation email: " + e.getMessage());
+            log.warn("Event confirmation email failed eventId={}", saved.getId(), e);
         }
 
         Map<String, Object> response = new HashMap<>();

@@ -9,6 +9,8 @@ import com.secretsanta.service.RateLimitService;
 import com.secretsanta.service.RequestAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +22,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/invites")
 public class InviteController {
+
+    private static final Logger log = LoggerFactory.getLogger(InviteController.class);
 
     private final InviteService inviteService;
     private final ParticipantRepository participantRepo;
@@ -103,7 +107,7 @@ public class InviteController {
                 inviteService.sendInvite(email, event.getName(), joinLink);
                 sent++;
             } catch (Exception e) {
-                System.err.println("Failed to send invite to " + email + ": " + e.getMessage());
+                log.warn("Invite email failed eventId={} participantId={}", eventId, participant.getId(), e);
             }
         }
 

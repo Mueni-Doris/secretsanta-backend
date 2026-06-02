@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,8 @@ import java.util.Map;
 
 @Service
 public class JwtService {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${jwt.secret}")
     private String secret;
@@ -43,7 +47,7 @@ public class JwtService {
                     .signWith(getKey(), SignatureAlgorithm.HS256)
                     .compact();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("JWT generation failed for userId={} eventId={}", userId, eventId, e);
             throw new RuntimeException("JWT generation failed: " + e.getMessage());
         }
     }

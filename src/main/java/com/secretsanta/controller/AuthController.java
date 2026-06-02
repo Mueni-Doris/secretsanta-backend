@@ -7,6 +7,8 @@ import com.secretsanta.service.EmailService;
 import com.secretsanta.service.JwtService;
 import com.secretsanta.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCrypt;
@@ -22,6 +24,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final ParticipantRepository participantRepo;
     private final EventRepository eventRepo;
@@ -113,28 +117,28 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Missing fields"));
         }
 
-        Optional<Participant> found = participantRepo.findByEmailIgnoreCase(email.trim());
+        List<Participant> candidates = participantRepo.findAllByEmailIgnoreCase(email.trim());
 
-        if (found.isEmpty()) {
+        if (candidates.isEmpty()) {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
         }
 
-        Participant participant = found.get();
-
-        // =========================
-        // FIX: prevent BCrypt crash
-        // =========================
-        String hash = participant.getPasswordHash();
-
-        if (hash == null || hash.isBlank()) {
-            return ResponseEntity.status(401).body(Map.of("error", "Account not set up"));
+        Participant participant = null;
+        for (Participant candidate : candidates) {
+            String hash = candidate.getPasswordHash();
+            if (hash == null || hash.isBlank()) {
+                continue;
+            }
+            if (!hash.startsWith("$2a$") && !hash.startsWith("$2b$") && !hash.startsWith("$2y$")) {
+                continue;
+            }
+            if (BCrypt.checkpw(password, hash)) {
+                participant = candidate;
+                break;
+            }
         }
 
-        if (!hash.startsWith("$2a$") && !hash.startsWith("$2b$")) {
-            return ResponseEntity.status(500).body(Map.of("error", "Corrupt password hash"));
-        }
-
-        if (!BCrypt.checkpw(password, hash)) {
+        if (participant == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
         }
 
@@ -182,7 +186,7 @@ public class AuthController {
             try {
                 emailService.sendPasswordReset(p.getEmail(), p.getName(), resetLink);
             } catch (Exception e) {
-                System.out.println("Email failed: " + e.getMessage());
+                log.warn("Password reset email failed participantId={}", p.getId(), e);
             }
         }
 

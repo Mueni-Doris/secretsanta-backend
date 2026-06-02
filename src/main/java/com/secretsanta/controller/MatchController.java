@@ -8,6 +8,8 @@ import com.secretsanta.repository.ParticipantRepository;
 import com.secretsanta.service.EmailService;
 import com.secretsanta.service.RequestAuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/matches")
 public class MatchController {
+
+    private static final Logger log = LoggerFactory.getLogger(MatchController.class);
 
     private final MatchRepository matchRepo;
     private final ParticipantRepository participantRepo;
@@ -194,10 +198,10 @@ public class MatchController {
                             event.getName(),
                             round
                     );
-                    System.out.println("All spun for event " + eventId + " round " + round);
+                    log.info("All participants spun eventId={} round={}", eventId, round);
                 });
             } catch (Exception e) {
-                System.err.println("Could not send all-spun email: " + e.getMessage());
+                log.warn("All-spun email failed eventId={} round={}", eventId, round, e);
             }
         }
     }

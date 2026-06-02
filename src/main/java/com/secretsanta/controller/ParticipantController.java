@@ -7,6 +7,8 @@ import com.secretsanta.service.EmailService;
 import com.secretsanta.service.RateLimitService;
 import com.secretsanta.service.RequestAuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +19,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/participants")
 public class ParticipantController {
+
+    private static final Logger log = LoggerFactory.getLogger(ParticipantController.class);
 
     private final ParticipantRepository repo;
     private final EventRepository eventRepo;
@@ -92,7 +96,7 @@ public class ParticipantController {
             try {
                 emailService.sendReminder(p.getEmail(), p.getName());
             } catch (Exception e) {
-                System.err.println("Failed: " + e.getMessage());
+                log.warn("Reminder email failed participantId={}", p.getId(), e);
             }
         });
 

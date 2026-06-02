@@ -2,12 +2,16 @@ package com.secretsanta.service;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class InviteService {
+
+    private static final Logger log = LoggerFactory.getLogger(InviteService.class);
 
     private final JavaMailSender mailSender;
 
@@ -38,7 +42,7 @@ public class InviteService {
                 sendInvite(email, eventName, joinLink);
                 successCount++;
             } catch (Exception e) {
-                System.err.println("Failed to send invite to " + email + ": " + e.getMessage());
+                log.warn("Invite email failed email={}", email, e);
             }
         }
         return successCount;
