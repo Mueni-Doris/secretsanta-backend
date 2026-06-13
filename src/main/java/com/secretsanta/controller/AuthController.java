@@ -179,6 +179,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
 
+        log.error("============== FORGOT PASSWORD HIT ==============");
 
         String email = body.get("email");
 
