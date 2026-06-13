@@ -27,7 +27,7 @@ public class EmailService {
             String joinLink
     ) {
         SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom("muenidoris22@gmail.com");
+        msg.setFrom("muenidoris04@gmail.com");
         msg.setTo(adminEmail);
         msg.setSubject("🎄 Your Secret Santa event is live — " + eventName);
         msg.setText(
@@ -132,7 +132,7 @@ public class EmailService {
     // Triggered: user requests a password reset from the login page
     public void sendPasswordReset(String toEmail, String name, String resetLink) {
         SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom("muenidoris22@gmail.com");
+        msg.setFrom("muenidoris04@gmail.com");
         msg.setTo(toEmail);
         msg.setSubject("Reset your Secret Santa password");
         msg.setText(

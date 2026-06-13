@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Entity
 @Table(name = "participants")
@@ -51,7 +52,6 @@ public class Participant {
     @Column(name = "has_spun")
     private boolean hasSpun = false;
 
-    // Links participant to a specific event
     @Column(name = "event_id")
     private Long eventId;
 
@@ -59,7 +59,14 @@ public class Participant {
     private LocalDateTime createdAt;
 
     @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+    @PreUpdate
+    public void normalizeFields() {
+        if (email != null) {
+            email = email.trim().toLowerCase(Locale.ROOT);
+        }
+
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

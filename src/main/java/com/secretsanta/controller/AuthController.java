@@ -103,11 +103,18 @@ public class AuthController {
     // =========================
     // LOGIN (FIXED 500 CRASH)
     // =========================
+// =========================
+// LOGIN
+// =========================
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body, HttpServletRequest request) {
 
         String email = body.get("email");
         String password = body.get("password");
+
+        if (email != null) {
+            email = email.trim().toLowerCase();
+        }
 
         if (!rateLimitService.allow("login", request.getRemoteAddr() + ":" + email, 10, 15 * 60 * 1000)) {
             return ResponseEntity.status(429).body(Map.of("error", "Too many attempts"));
@@ -117,21 +124,27 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Missing fields"));
         }
 
-        List<Participant> candidates = participantRepo.findAllByEmailIgnoreCase(email.trim());
+        List<Participant> candidates = participantRepo.findAllByEmailIgnoreCase(email);
 
         if (candidates.isEmpty()) {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
         }
 
         Participant participant = null;
+
         for (Participant candidate : candidates) {
             String hash = candidate.getPasswordHash();
+
             if (hash == null || hash.isBlank()) {
                 continue;
             }
-            if (!hash.startsWith("$2a$") && !hash.startsWith("$2b$") && !hash.startsWith("$2y$")) {
+
+            if (!hash.startsWith("$2a$")
+                    && !hash.startsWith("$2b$")
+                    && !hash.startsWith("$2y$")) {
                 continue;
             }
+
             if (BCrypt.checkpw(password, hash)) {
                 participant = candidate;
                 break;
@@ -154,25 +167,53 @@ public class AuthController {
                 "name", participant.getName(),
                 "email", participant.getEmail(),
                 "eventId", participant.getEventId(),
-                "avatarColor", participant.getAvatarColor() != null ? participant.getAvatarColor() : "#c8453a"
+                "avatarColor",
+                participant.getAvatarColor() != null
+                        ? participant.getAvatarColor()
+                        : "#c8453a"
         ));
     }
-
     // =========================
     // FORGOT PASSWORD
     // =========================
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
 
+
         String email = body.get("email");
+
+
+        log.info("Password reset requested for email={}", email);
+
+
+        log.info("Email length={}", email.length());
+
+        for (char c : email.toCharArray()) {
+            log.info("char={} code={}", c, (int)c);
+        }
+
 
         if (email == null || email.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email required"));
         }
 
-        List<Participant> participants = participantRepo.findAllByEmailIgnoreCase(email.trim());
+        List<Participant> participants =
+                participantRepo.findAllByEmailIgnoreCase(email.trim());
+
+        Optional<Participant> test =
+                participantRepo.findByEmailIgnoreCase(email.trim());
+
+        log.info("Found {} participants", participants.size());
+        log.info("findByEmailIgnoreCase result={}", test.isPresent());
+
 
         for (Participant p : participants) {
+
+            log.info(
+                    "Sending reset email to participantId={} email={}",
+                    p.getId(),
+                    p.getEmail()
+            );
 
             String token = generateSecureToken();
 
@@ -185,6 +226,9 @@ public class AuthController {
 
             try {
                 emailService.sendPasswordReset(p.getEmail(), p.getName(), resetLink);
+
+                log.info("Reset email sent to {}", p.getEmail());
+
             } catch (Exception e) {
                 log.warn("Password reset email failed participantId={}", p.getId(), e);
             }
@@ -263,4 +307,11 @@ public class AuthController {
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
+
+    @GetMapping("/debug-count")
+    public long debugCount() {
+        return participantRepo.count();
+    }
 }
+
+
