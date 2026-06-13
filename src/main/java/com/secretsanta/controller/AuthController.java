@@ -225,12 +225,19 @@ public class AuthController {
             String resetLink = frontendBaseUrl + "/reset-password?token=" + token;
 
             try {
-                emailService.sendPasswordReset(p.getEmail(), p.getName(), resetLink);
 
-                log.info("Reset email sent to {}", p.getEmail());
+                log.info("About to send reset email to {}", p.getEmail());
+
+                emailService.sendPasswordReset(
+                        p.getEmail(),
+                        p.getName(),
+                        resetLink
+                );
+
+                log.info("Reset email sent successfully to {}", p.getEmail());
 
             } catch (Exception e) {
-                log.warn("Password reset email failed participantId={}", p.getId(), e);
+                log.error("Password reset email failed for {}", p.getEmail(), e);
             }
         }
 

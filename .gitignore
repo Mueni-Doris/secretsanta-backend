@@ -35,4 +35,3 @@ build/
 .vscode/
 .env
 *.sql
-.application.properties
