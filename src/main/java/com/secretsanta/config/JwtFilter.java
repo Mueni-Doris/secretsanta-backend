@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
@@ -23,12 +24,17 @@ public class JwtFilter extends OncePerRequestFilter {
         this.participantRepo = participantRepo;
     }
 
-    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain chain
     ) throws ServletException, IOException {
+
+        System.out.println(
+                "JWT FILTER HIT: method=" + request.getMethod()
+                        + " uri=" + request.getRequestURI()
+                        + " servletPath=" + request.getServletPath()
+        );
 
         String path = request.getRequestURI();
 
@@ -44,6 +50,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 path.equals("/api/auth/accept-invite") ||
                 path.equals("/api/auth/forgot-password") ||
                 path.equals("/api/auth/reset-password")) {
+
+            System.out.println("PUBLIC ENDPOINT BYPASSED: " + path);
+
             chain.doFilter(request, response);
             return;
         }

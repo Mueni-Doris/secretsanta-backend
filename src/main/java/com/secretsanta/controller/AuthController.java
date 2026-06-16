@@ -109,6 +109,9 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body, HttpServletRequest request) {
 
+
+        System.out.println("LOGIN ENDPOINT HIT");
+
         String email = body.get("email");
         String password = body.get("password");
 
