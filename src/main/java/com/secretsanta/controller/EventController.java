@@ -55,10 +55,14 @@ public class EventController {
     // 4. Send confirmation email
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, String> body) {
+
+            System.out.println(" CREATE ");
+             System.out.println("BODY = " + body);
+
         String name = trimToNull(body.get("name"));
         String budget = trimToNull(body.get("budget"));
         String organizerEmail = normalizeEmail(body.get("organizerEmail"));
-        String organizerPassword = body.get("organizerPassword");
+        // String organizerPassword = body.get("organizerPassword");
 
         if (name == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Event name is required"));
@@ -69,9 +73,9 @@ public class EventController {
         if (organizerEmail == null || !organizerEmail.contains("@")) {
             return ResponseEntity.badRequest().body(Map.of("error", "Valid organizer email is required"));
         }
-        if (organizerPassword == null || organizerPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Organizer password must be at least 6 characters"));
-        }
+        // if (organizerPassword == null || organizerPassword.length() < 6) {
+        //     return ResponseEntity.badRequest().body(Map.of("error", "Organizer password must be at least 6 characters"));
+        // }
 
         // Build event
         Event event = new Event();
@@ -99,12 +103,12 @@ public class EventController {
         organizer.setHasSpun(false);
         organizer.setEventId(saved.getId());
 
-        organizer.setPasswordHash(
-                org.springframework.security.crypto.bcrypt.BCrypt.hashpw(
-                        organizerPassword,
-                        org.springframework.security.crypto.bcrypt.BCrypt.gensalt()
-                )
-        );
+        // organizer.setPasswordHash(
+        //         org.springframework.security.crypto.bcrypt.BCrypt.hashpw(
+        //                 organizerPassword,
+        //                 org.springframework.security.crypto.bcrypt.BCrypt.gensalt()
+        //         )
+        // );
 
         Participant savedOrganizer = participantRepo.save(organizer);
 

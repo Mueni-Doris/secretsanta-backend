@@ -121,6 +121,7 @@ public class DataSeeder {
             m1.setReceiverName("Doris");
             m1.setAvatarColor(pDoris.getAvatarColor());
             m1.setRound(1);
+            m1.setEventId(event.getId());
 
             Match m2 = new Match();
             m2.setGiverId(pMum.getId());
@@ -129,6 +130,7 @@ public class DataSeeder {
             m2.setReceiverName("Diana");
             m2.setAvatarColor(pDiana.getAvatarColor());
             m2.setRound(1);
+            m2.setEventId(event.getId());
 
             Match m3 = new Match();
             m3.setGiverId(pDiana.getId());
@@ -161,6 +163,7 @@ public class DataSeeder {
             m6.setReceiverName("Mum");
             m6.setAvatarColor(pMum.getAvatarColor());
             m6.setRound(1);
+            m6.setEventId(event.getId());
 
             matchRepo.saveAll(List.of(m1, m2, m3, m4, m5, m6));
 

@@ -11,8 +11,12 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     Optional<Match> findByGiverIdAndRoundAndEventId(Long giverId, int round, Long eventId);
     List<Match> findByRoundAndEventId(int round, Long eventId);
     boolean existsByGiverIdAndRoundAndEventId(Long giverId, int round, Long eventId);
+    boolean existsByReceiverIdAndRoundAndEventId(Long receiverId, int round, Long eventId);
+    boolean existsByGiverIdAndReceiverIdAndEventId(Long giverId, Long receiverId, Long eventId);
     List<Match> findByGiverId(Long giverId);
     Optional<Match> findByGiverIdAndRound(Long giverId, int round);
     List<Match> findByRound(int round);
     boolean existsByGiverIdAndRound(Long giverId, int round);
+    List<Match> findByEventId(Long eventId);
+    long countByEventIdAndRound(Long eventId, int round);
 }

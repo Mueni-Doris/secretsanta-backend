@@ -34,7 +34,7 @@ public class AuthController {
     private final EmailService emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @Value("${app.frontend-base-url:http://localhost:5173}")
+    @Value("${app.frontend-base-url:${FRONTEND_BASE_URL:http://localhost:5173}}")
     private String frontendBaseUrl;
 
     public AuthController(
@@ -100,9 +100,6 @@ public class AuthController {
         ));
     }
 
-    // =========================
-    // LOGIN (FIXED 500 CRASH)
-    // =========================
 // =========================
 // LOGIN
 // =========================
@@ -161,6 +158,9 @@ public class AuthController {
         String token = jwtService.generateToken(
                 participant.getId(),
                 participant.getEmail(),
+    // =========================
+    // LOGIN (FIXED 500 CRASH)
+    // =========================
                 participant.getEventId()
         );
 

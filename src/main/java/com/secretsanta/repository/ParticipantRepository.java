@@ -9,6 +9,7 @@ import java.util.Optional;
 @Repository
 public interface ParticipantRepository extends JpaRepository<Participant, Long> {
     List<Participant> findByEventId(Long eventId);
+    long countByEventId(Long eventId);
     Optional<Participant> findByEmailAndEventId(String email, Long eventId);
     Optional<Participant> findByEmailIgnoreCaseAndEventId(String email, Long eventId);
     Optional<Participant> findByEmail(String email);

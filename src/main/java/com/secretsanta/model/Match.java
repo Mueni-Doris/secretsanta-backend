@@ -12,6 +12,10 @@ import lombok.AllArgsConstructor;
                 @UniqueConstraint(
                         name = "uk_matches_giver_event_round",
                         columnNames = {"giver_id", "event_id", "round"}
+                ),
+                @UniqueConstraint(
+                        name = "uk_matches_receiver_event_round",
+                        columnNames = {"receiver_id", "event_id", "round"}
                 )
         }
 )

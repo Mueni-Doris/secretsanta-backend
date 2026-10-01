@@ -1,7 +1,7 @@
 package com.secretsanta.controller;
 
 import com.secretsanta.model.Participant;
-import com.secretsanta.repository.EventRepository;
+import com.secretsanta.repository.MatchRepository;
 import com.secretsanta.repository.ParticipantRepository;
 import com.secretsanta.service.EmailService;
 import com.secretsanta.service.RateLimitService;
@@ -23,20 +23,20 @@ public class ParticipantController {
     private static final Logger log = LoggerFactory.getLogger(ParticipantController.class);
 
     private final ParticipantRepository repo;
-    private final EventRepository eventRepo;
+    private final MatchRepository matchRepo;
     private final EmailService emailService;
     private final RequestAuthService authService;
     private final RateLimitService rateLimitService;
 
     public ParticipantController(
             ParticipantRepository repo,
-            EventRepository eventRepo,
+            MatchRepository matchRepo,
             EmailService emailService,
             RequestAuthService authService,
             RateLimitService rateLimitService
     ) {
         this.repo = repo;
-        this.eventRepo = eventRepo;
+        this.matchRepo = matchRepo;
         this.emailService = emailService;
         this.authService = authService;
         this.rateLimitService = rateLimitService;
@@ -109,6 +109,7 @@ public class ParticipantController {
     @GetMapping("/stats")
     public ResponseEntity<?> stats(
             @RequestParam(required = false) Long eventId,
+            @RequestParam(required = false) Integer round,
             HttpServletRequest request
     ) {
         Long scopedEventId = resolveEventId(eventId, request);
@@ -118,10 +119,17 @@ public class ParticipantController {
 
         List<Participant> all = repo.findByEventId(scopedEventId);
 
+        long matches = round != null
+                ? matchRepo.countByEventIdAndRound(scopedEventId, round)
+                : matchRepo.findByEventId(scopedEventId).size();
+
         Map<String, Long> result = new HashMap<>();
         result.put("total",     (long) all.size());
         result.put("wishlists", all.stream().filter(p -> "Submitted".equals(p.getWishlistStatus())).count());
-        result.put("matches",   all.stream().filter(Participant::isHasSpun).count());
+        result.put("matches",   matches);
+        if (round != null) {
+            result.put("round", (long) round);
+        }
 
         return ResponseEntity.ok(result);
     }

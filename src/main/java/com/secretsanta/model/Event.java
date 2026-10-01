@@ -33,4 +33,7 @@ public class Event {
     private String organizerEmail;
 
     private String status; // "active", "completed"
+
+    @Column(name = "round")
+    private Integer round = 1;
 }

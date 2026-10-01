@@ -3,6 +3,7 @@ package com.secretsanta.controller;
 import com.secretsanta.model.Match;
 import com.secretsanta.model.Participant;
 import com.secretsanta.repository.EventRepository;
+import com.secretsanta.model.Event;
 import com.secretsanta.repository.MatchRepository;
 import com.secretsanta.repository.ParticipantRepository;
 import com.secretsanta.service.EmailService;
@@ -14,9 +15,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/matches")
@@ -49,7 +52,7 @@ public class MatchController {
     @GetMapping("/my")
     public ResponseEntity<?> getMyMatch(
             @RequestParam(required = false) Long userId,
-            @RequestParam(defaultValue = "2") int round,
+            @RequestParam(required = false) Integer round,
             @RequestParam(required = false) Long eventId,
             HttpServletRequest request
     ) {
@@ -62,7 +65,9 @@ public class MatchController {
             return ResponseEntity.status(403).body(Map.of("error", "Forbidden for this event"));
         }
 
-        Optional<Match> match = matchRepo.findByGiverIdAndRoundAndEventId(tokenUserId, round, scopedEventId);
+        int effectiveRound = (round != null) ? round : getCurrentRoundForEvent(scopedEventId);
+
+        Optional<Match> match = matchRepo.findByGiverIdAndRoundAndEventId(tokenUserId, effectiveRound, scopedEventId);
 
         return match.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -114,6 +119,19 @@ public class MatchController {
                     .body(Map.of("error", "You have already spun this round"));
         }
 
+        // Guard: no receiver can be assigned more than once per round
+        if (matchRepo.existsByReceiverIdAndRoundAndEventId(receiver.getId(), currentRound, eventId)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "This participant is already assigned as a receiver this round"));
+        }
+
+        // Guard: do not repeat a giver→receiver pair until the event has exhausted all unique pairs.
+        if (matchRepo.existsByGiverIdAndReceiverIdAndEventId(giver.getId(), receiver.getId(), eventId)
+                && !eventHasExhaustedUniquePairs(eventId)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "This participant was already assigned to the same receiver in a previous round"));
+        }
+
         Match saved;
         try {
             saved = matchRepo.save(match);
@@ -135,6 +153,7 @@ public class MatchController {
     @GetMapping("/status")
     public ResponseEntity<?> status(
             @RequestParam(required = false) Long eventId,
+            @RequestParam(required = false) Integer round,
             HttpServletRequest request
     ) {
         Long scopedEventId = eventId != null ? eventId : authService.currentEventId(request);
@@ -143,13 +162,13 @@ public class MatchController {
         }
 
         List<Participant> participants = participantRepo.findByEventId(scopedEventId);
-
         long total = participants.size();
-        long spun  = participants.stream()
-                .filter(Participant::isHasSpun)
-                .count();
+
+        int currentRound = round != null ? round : getCurrentRoundForEvent(scopedEventId);
+        long spun = matchRepo.countByEventIdAndRound(scopedEventId, currentRound);
 
         return ResponseEntity.ok(Map.of(
+                "round",    currentRound,
                 "total",    total,
                 "spun",     spun,
                 "complete", spun >= total
@@ -176,14 +195,54 @@ public class MatchController {
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private int getCurrentRoundForEvent(Long eventId) {
-        List<Match> eventMatches = matchRepo.findAll().stream()
-                .filter(m -> eventId.equals(m.getEventId()))
-                .toList();
-        if (eventMatches.isEmpty()) return 1;
-        return eventMatches.stream()
-                .mapToInt(Match::getRound)
-                .max()
+        // Prefer an explicit round stored on the Event row (nullable). Fall back
+        // to computing from match rows if it's not set.
+        return eventRepo.findById(eventId)
+                .map(event -> {
+                    Integer evRound = event.getRound();
+                    if (evRound != null) {
+                        return evRound;
+                    }
+
+                    // fallback: compute from matches
+                    List<Match> eventMatches = matchRepo.findByEventId(eventId);
+                    if (eventMatches.isEmpty()) {
+                        return 1;
+                    }
+
+                    int latestRound = eventMatches.stream()
+                            .mapToInt(Match::getRound)
+                            .max()
+                            .orElse(1);
+
+                    long totalParticipants = participantRepo.countByEventId(eventId);
+                    long latestRoundMatches = matchRepo.countByEventIdAndRound(eventId, latestRound);
+
+                    // When the latest round is complete, advance to the next round.
+                    if (latestRoundMatches >= totalParticipants) {
+                        return latestRound + 1;
+                    }
+
+                    return latestRound;
+                })
                 .orElse(1);
+    }
+
+    private boolean eventHasExhaustedUniquePairs(Long eventId) {
+        List<Participant> eventParticipants = participantRepo.findByEventId(eventId);
+        int participantCount = eventParticipants.size();
+        if (participantCount < 2) {
+            return true;
+        }
+
+        List<Match> eventMatches = matchRepo.findByEventId(eventId);
+        Set<String> uniquePairs = new HashSet<>();
+        for (Match existing : eventMatches) {
+            uniquePairs.add(existing.getGiverId() + ":" + existing.getReceiverId());
+        }
+
+        long possiblePairs = (long) participantCount * (participantCount - 1);
+        return uniquePairs.size() >= possiblePairs;
     }
 
     private void checkIfAllSpun(Long eventId, int round) {
@@ -199,6 +258,21 @@ public class MatchController {
                             round
                     );
                     log.info("All participants spun eventId={} round={}", eventId, round);
+
+                    // Reset participant `hasSpun` for the next round and update
+                    // the event's stored round so the system uses the event row
+                    // as the authoritative current round going forward.
+                    try {
+                        eventParticipants.forEach(p -> p.setHasSpun(false));
+                        participantRepo.saveAll(eventParticipants);
+                        log.info("Reset hasSpun flags for eventId={} after round={}", eventId, round);
+
+                        event.setRound(round + 1);
+                        eventRepo.save(event);
+                        log.info("Advanced Event.round to {} for eventId={}", round + 1, eventId);
+                    } catch (Exception e) {
+                        log.warn("Failed to reset hasSpun flags or update event round for eventId={} after round={}", eventId, round, e);
+                    }
                 });
             } catch (Exception e) {
                 log.warn("All-spun email failed eventId={} round={}", eventId, round, e);
